@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Bresca</string>
+    <string name="google_client_id">secreto</string>
+</resources>
