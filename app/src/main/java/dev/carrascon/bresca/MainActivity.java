@@ -17,6 +17,24 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 
+import java.nio.charset.StandardCharsets;
+
+
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
+
 public class MainActivity extends AppCompatActivity {
     private static final int RC_SIGN_IN = 9001;
     private GoogleSignInClient mGoogleSignInClient;
@@ -52,9 +70,49 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == RC_SIGN_IN) {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-
+            handleSignInResult(task);
         }
+    }
+    private void authenticateWithBackend(String idToken) {
+        String backendUrl = "http://192.168.0.208:8080";
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(backendUrl)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        BackendApi backendApi = retrofit.create(BackendApi.class);
+
+        RequestBody requestBody = RequestBody.create(MediaType.parse("application/octet-stream"), idToken.getBytes(StandardCharsets.UTF_8));
+        Call<User> call = backendApi.authenticateWithGoogle(requestBody);
+
+        call.enqueue(new Callback<User>() {
+            @Override
+            public void onResponse(Call<User> call, Response<User> response) {
+                if (response.isSuccessful()) {
+                    User user = response.body();
+                    // Handle the response from your backend, e.g., navigate to the main activity
+                } else {
+                    Log.e(TAG, "Error authenticating with backend: " + response.message());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<User> call, Throwable t) {
+                Log.e(TAG, "Error authenticating with backend: " + t.getMessage());
+            }
+        });
     }
 
 
+    private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
+        try {
+            GoogleSignInAccount account = completedTask.getResult(ApiException.class);
+            // Send the account's ID token to your backend for authentication
+            authenticateWithBackend(account.getIdToken());
+        } catch (ApiException e) {
+            // Sign in failed
+            Log.w(TAG, "signInResult:failed code=" + e.getStatusCode());
+        }
+    }
 }
